@@ -104,11 +104,13 @@ Tree view for adding and removing a user from user groups
 
       _loadChildren: function(event) {
         var userGroupNode = event.detail;
-        this._setLoadingState(userGroupNode, true);
-        this._getUserGroups(userGroupNode.data.id, function(userGroups) {
-          userGroupNode.set('data.children', this._mapUserGroupsToTreeNodes(userGroups));
-          this._setLoadingState(userGroupNode, false);
-        }.bind(this));
+        if (userGroupNode.data.id !== null && userGroupNode.data.id !== undefined) {
+          this._setLoadingState(userGroupNode, true);
+          this._getUserGroups(userGroupNode.data.id, function (userGroups) {
+            userGroupNode.set('data.children', this._mapUserGroupsToTreeNodes(userGroups));
+            this._setLoadingState(userGroupNode, false);
+          }.bind(this));
+        }
       },
 
       _setLoadingState: function(node, enabled) {
