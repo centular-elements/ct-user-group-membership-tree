@@ -1,0 +1,135 @@
+<link rel="import" href="../polymer/polymer.html">
+
+<link rel="import" href="../ct-paper-tree/ct-paper-tree.html">
+<link rel="import" href="../ct-user-api/ct-user-api.html">
+<link rel="import" href="../ct-user-groups-api/ct-user-groups-api.html">
+<link rel="import" href="../ct-core-utils/ct-api-consumer-behaviour.html">
+
+<!--
+`ct-user-group-membership-tree`
+Tree view for adding and removing a user from user groups
+
+@demo demo/index.html 
+-->
+
+<dom-module id="ct-user-group-membership-tree">
+  <template>
+    <style>
+      :host {
+        display: block;
+      }
+
+      @keyframes blinker {
+        50% { opacity: 0; }
+      }
+
+      #tree {
+          --ct-paper-tree-toggle-theme: {
+              animation: blinker 1s linear infinite;
+              content: '⧖';
+              margin-left: -21px;
+          };
+      }
+    </style>
+    <ct-user-api id="usersApi"></ct-user-api>
+    <ct-user-groups-api id="userGroupsApi"></ct-user-groups-api>
+
+    <ct-paper-tree id="tree" data="[[ _rootNodes ]]" actions="[[ _actions ]]"></ct-paper-tree>
+  </template>
+
+  <script>
+    Polymer({
+      is: 'ct-user-group-membership-tree',
+      behaviors: [CT.Behaviours.ApiConsumer],
+
+      properties: {
+        userId: String,
+        userGroupsParentId: String
+      },
+
+      listeners: {
+        'loadChildren': '_loadChildren'
+      },
+
+      observers: ['_init(userId, userGroupsParentId)'],
+
+      _init: function() {
+        this._data = {
+          name: "Loading User Groups..."
+        };
+        this._actions = [{
+          label: 'Join',
+          icon: 'social:person-add',
+          event: 'onJoin',
+          flags: [{
+            "name": "member",
+            "condition": false
+          }]
+        }, {
+          label: 'Leave',
+          event: 'onLeave',
+          icon: 'social:person-outline',
+          flags: [{
+            "name": "member",
+            "condition": true
+          }]
+        }];
+
+        this.$.usersApi.getUser(this.userId)
+                .then(function (request) { this._memberGroups = request.result.groups; }.bind(this))
+                .catch(function (error) { }.bind(this));
+
+        this._getUserGroups(this.userGroupsParentId, function(userGroups) {
+          this._rootNodes = this._mapUserGroupsToTreeNodes(userGroups);
+        }.bind(this));
+      },
+
+      _getUserGroups: function(parentId, groupsReceivedCallback) {
+        this.$.userGroupsApi.getUserGroups(parentId, 0, 20)
+                .then(function(request){groupsReceivedCallback(request.response.results)})
+                .catch(function (error) {
+                }.bind(this));
+      },
+
+      _mapUserGroupsToTreeNodes: function(userGroups) {
+        return userGroups.map(function(userGroup) {
+          return {
+            id: userGroup.id,
+            name: userGroup.name,
+            icon: "social:group",
+            flags: this._computeMembershipFlag(userGroup)
+          }
+        }.bind(this))
+      },
+
+      _loadChildren: function(event) {
+        var userGroupNode = event.detail;
+        this._setLoadingState(userGroupNode, true);
+        this._getUserGroups(userGroupNode.data.id, function(userGroups) {
+          userGroupNode.set('data.children', this._mapUserGroupsToTreeNodes(userGroups));
+          this._setLoadingState(userGroupNode, false);
+        }.bind(this));
+      },
+
+      _setLoadingState: function(node, enabled) {
+        if (enabled) {
+          node.customStyle['--ct-paper-tree-toggle-theme'] = 'animation: blinker 1s linear infinite; content: \'⧖\'; margin-left: -21px;';
+        } else {
+          node.customStyle['--ct-paper-tree-toggle-theme'] = ';';
+        }
+        node.updateStyles();
+      },
+
+      _computeMembershipFlag: function (userGroup) {
+        return this._memberGroups.findIndex(function (memberGroup) {
+                  return memberGroup.id === userGroup.id;
+                }) > -1 ? [{
+          "flag": "member",
+          "icon": "icons:card-membership"
+        }] : [];
+      }
+
+
+    });
+  </script>
+</dom-module>

@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, minimum-scale=1, initial-scale=1, user-scalable=yes">
+
+    <title>ct-user-group-membership-tree test</title>
+
+    <script src="../../webcomponentsjs/webcomponents-lite.js"></script>
+    <script src="../../web-component-tester/browser.js"></script>
+
+    <link rel="import" href="../ct-user-group-membership-tree.html">
+  </head>
+  <body>
+    <test-fixture id="basic">
+      <template>
+        <ct-user-group-membership-tree></ct-user-group-membership-tree>
+      </template>
+    </test-fixture>
+
+    <script>
+      suite('ct-user-group-membership-tree', function() {
+        test('instantiating the element works', function() {
+          var element = fixture('basic');
+          assert.equal(element.is, 'ct-user-group-membership-tree');
+        });
+      });
+    </script>
+  </body>
+</html>
