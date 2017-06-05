@@ -24,11 +24,11 @@ Tree view for adding and removing a user from user groups
       }
 
       #tree {
-          --ct-paper-tree-toggle-theme: {
-              animation: blinker 1s linear infinite;
-              content: '⧖';
-              margin-left: -21px;
-          };
+        --ct-paper-tree-toggle-theme: {
+          animation: blinker 1s linear infinite;
+          content: '⧖';
+          margin-left: -21px;
+        };
       }
     </style>
     <ct-user-api id="usersApi"></ct-user-api>
@@ -48,26 +48,25 @@ Tree view for adding and removing a user from user groups
       },
 
       listeners: {
-        'loadChildren': '_loadChildren'
+        'loadChildren': '_loadChildren',
+        'join': '_onJoin',
+        'leave': '_onLeave'
       },
 
-      observers: ['_init(userId, userGroupsParentId)'],
+      observers: ['_init(userId, userGroupsParentId)', '_getRootUserGroups(_memberGroups)'],
 
       _init: function() {
-        this._data = {
-          name: "Loading User Groups..."
-        };
         this._actions = [{
           label: 'Join',
           icon: 'social:person-add',
-          event: 'onJoin',
+          event: 'join',
           flags: [{
             "name": "member",
             "condition": false
           }]
         }, {
           label: 'Leave',
-          event: 'onLeave',
+          event: 'leave',
           icon: 'social:person-outline',
           flags: [{
             "name": "member",
@@ -76,9 +75,15 @@ Tree view for adding and removing a user from user groups
         }];
 
         this.$.usersApi.getUser(this.userId)
-                .then(function (request) { this._memberGroups = request.result.groups; }.bind(this))
-                .catch(function (error) { }.bind(this));
+                .then(function (request) {
+                  this._memberGroups = request.response.groups;
+                }.bind(this))
+                .catch(function (error) {
+                  console.log(error);
+                }.bind(this));
+      },
 
+      _getRootUserGroups: function() {
         this._getUserGroups(this.userGroupsParentId, function(userGroups) {
           this._rootNodes = this._mapUserGroupsToTreeNodes(userGroups);
         }.bind(this));
@@ -86,7 +91,9 @@ Tree view for adding and removing a user from user groups
 
       _getUserGroups: function(parentId, groupsReceivedCallback) {
         this.$.userGroupsApi.getUserGroups(parentId, 0, 20)
-                .then(function(request){groupsReceivedCallback(request.response.results)})
+                .then(function(request){
+                  groupsReceivedCallback(request.response.results)
+                })
                 .catch(function (error) {
                 }.bind(this));
       },
@@ -124,12 +131,60 @@ Tree view for adding and removing a user from user groups
 
       _computeMembershipFlag: function (userGroup) {
         return this._memberGroups.findIndex(function (memberGroup) {
-                  return memberGroup.id === userGroup.id;
-                }) > -1 ? [{
+          return memberGroup.id === userGroup.id;
+        }) > -1 ? [{
           "flag": "member",
           "icon": "icons:card-membership"
         }] : [];
-      }
+      },
+
+      _onJoin: function(event) {
+        var groupNode = event.detail;
+        groupNode.showBusySpinner();
+        this.$.userGroupsApi.joinUserGroup(groupNode.data.id, [this.userId])
+                .then(function(request) {
+                  groupNode.data = {
+                    "id": groupNode.data.id,
+                    "name": groupNode.data.name,
+                    "icon": groupNode.data.icon,
+                    "flags": [{
+                      "flag": "member",
+                      "icon": "icons:card-membership"
+                    }],
+                    "open": groupNode.data.open,
+                    "children": groupNode.data.children
+                  };
+                })
+                .catch(function (error) {
+                  console.log(error)
+                }.bind(this))
+                .finally(function(request) {
+                  groupNode.hideBusySpinner();
+                }.bind(this));
+      },
+
+      _onLeave: function(event) {
+        var groupNode = event.detail;
+        groupNode.showBusySpinner();
+        this.$.userGroupsApi.leaveUserGroup(groupNode.data.id, [this.userId])
+                .then(function(request) {
+                  groupNode.data = {
+                    "id": groupNode.data.id,
+                    "name": groupNode.data.name,
+                    "icon": groupNode.data.icon,
+                    "open": groupNode.data.open,
+                    "children": groupNode.data.children
+                  };
+                })
+                .catch(function (error) {
+                  console.log(error)
+                }.bind(this))
+                .finally(function(request) {
+                  groupNode.hideBusySpinner();
+                }.bind(this));
+      },
+
+
 
 
     });
